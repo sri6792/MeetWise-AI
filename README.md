@@ -230,6 +230,4 @@ Arya Shetti
 Abhinash Singh
 G. Srividhya
 
-## 📄 License
 
-_Not yet specified. Add a `LICENSE` file before making the repository public._
