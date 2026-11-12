@@ -1,9 +1,11 @@
+
 'use client';
+
 import { CheckCircle2, XCircle } from 'lucide-react';
 import PageShell from '@/components/layout/PageShell';
 import { ErrorBanner, Spinner } from '@/components/ui/States';
 import { useAsync } from '@/hooks/useAsync';
-import { API_URL, api } from '@/lib/api';
+import { api } from '@/lib/api';
 
 function Row({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) {
   return (
@@ -50,15 +52,6 @@ export default function SettingsView() {
             </div>
           </div>
         )}
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-          <p><strong>Backend URL:</strong> <code className="rounded bg-slate-100 px-1.5 py-0.5">{API_URL}</code></p>
-          <p className="mt-2 text-slate-500">
-            Change it with <code className="rounded bg-slate-100 px-1.5 py-0.5">NEXT_PUBLIC_API_URL</code> in
-            <code className="rounded bg-slate-100 px-1.5 py-0.5">frontend/.env.local</code>. API keys live in
-            <code className="rounded bg-slate-100 px-1.5 py-0.5">backend/.env</code> and are never sent to the browser.
-          </p>
-        </div>
       </div>
     </PageShell>
   );
