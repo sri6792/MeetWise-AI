@@ -1,0 +1,25 @@
+# Render Blueprint for the MeetWise AI backend
+services:
+  - type: web
+    name: meetwise-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false          # e.g. https://meetwise-ai.vercel.app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: meetwise-db
+          property: connectionString
+
+databases:
+  - name: meetwise-db

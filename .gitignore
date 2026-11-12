@@ -1,0 +1,10 @@
+# Secrets and local data - never commit
+.env
+.env.*
+!.env.example
+*.db
+venv/
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
