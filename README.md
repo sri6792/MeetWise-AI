@@ -225,7 +225,10 @@ The tests use **fake search and AI responses**, so they cost nothing and need no
 
 ## 👥 Team
 
-_Add your team members here._
+Arpita Shirodkar
+Arya Shetti
+Abhinash Singh
+G. Srividhya
 
 ## 📄 License
 
