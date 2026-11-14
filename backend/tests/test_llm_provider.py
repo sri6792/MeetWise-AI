@@ -35,7 +35,7 @@ def script(monkeypatch, *responses):
 
     def fake_post(url, headers, payload):
         sent.append((url, headers, payload))
-        return next(it)
+        return next(it, responses[-1])
 
     monkeypatch.setattr(cs, "_post", fake_post)
     return sent
@@ -130,3 +130,23 @@ def test_overloaded_model_is_skipped_on_the_next_call(compat, monkeypatch):
     sent = script(monkeypatch, good('{"b": 2}'))
     assert cs.generate_json("s", "u", 100) == {"b": 2}
     assert [c[2]["model"] for c in sent] == ["backup-model"]   # did not waste time on the busy model again
+
+
+def test_truncated_reply_is_retried_with_a_bigger_budget(compat, monkeypatch):
+    cut = resp(200, {"choices": [{"message": {"content": '{"a": "cut off'}, "finish_reason": "length"}]})
+    sent = script(monkeypatch, cut, good('{"ok": 1}'))
+    assert cs.generate_json("s", "u", 100) == {"ok": 1}
+    assert sent[0][2]["max_tokens"] == 200 and sent[1][2]["max_tokens"] == 400
+
+
+def test_comments_and_trailing_commas_are_tolerated(compat, monkeypatch):
+    sent = script(monkeypatch, good('{\n "a": [1,], // a note\n}'))
+    assert cs.generate_json("s", "u", 100) == {"a": [1]}
+    assert len(sent) == 1
+
+
+def test_gives_up_after_three_unusable_replies(compat, monkeypatch):
+    script(monkeypatch, good("nope"), good("nope"), good("nope"))
+    with pytest.raises(cs.ClaudeServiceError) as e:
+        cs.generate_json("s", "u", 100)
+    assert "unusable" in str(e.value)

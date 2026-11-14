@@ -71,3 +71,9 @@ def test_tolerant_parsing_helpers():
     assert parse_date("garbage") is None and parse_date(None) is None and parse_date("2099-01-01") is None
     assert extract_json('```json\n{"a": 1}\n```') == {"a": 1}
     assert extract_json('Sure! {"a": [1]} done') == {"a": [1]}
+
+
+def test_extract_json_repairs_common_llm_slips():
+    assert extract_json('{"a": [1, 2,], // note\n "b": 3,}') == {"a": [1, 2], "b": 3}
+    assert extract_json('{"u": "https://example.com/a//b", // c\n "n": 1}') == {"u": "https://example.com/a//b", "n": 1}
+    assert extract_json('{"t": "line1\nline2"}') == {"t": "line1\nline2"}

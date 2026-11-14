@@ -17,19 +17,26 @@ _TASK = """TASK
 Using the verified findings and sources above, produce a briefing personalised to the meeting purpose.
 Return JSON with exactly these keys:
 {
-  "meeting_overview": [S],           // 2-3 statements: what this meeting is and what success looks like
-  "insights": [S],                   // 3-5 important insights that follow from the evidence
+  "meeting_overview": [S],
+  "insights": [S],
   "opportunities": [{"title": "", "type": "collaboration|business|partnership", "description": "",
-                     "why_relevant": "<why this fits THIS meeting purpose>", "source_ids": [<int>]}],  // 2-4
-  "risks": [S],                      // 2-4 possible challenges or risks
-  "discussion_points": [S],          // 4-6 suggested discussion points
-  "strategy": [S],                   // 2-4 statements: recommended meeting strategy
+                     "why_relevant": "", "source_ids": [<int>]}],
+  "risks": [S],
+  "discussion_points": [S],
+  "strategy": [S],
   "questions": {"strategic": [Q], "technical": [Q], "business": [Q], "collaboration": [Q], "follow_up": [Q]}
 }
 S = {"text": "<one sentence>", "source_ids": [<int>], "is_inference": <bool>}
 Q = {"question": "", "rationale": "<why ask this>", "reveals": "<the opportunity or risk this could uncover, or null>", "source_ids": [<int>]}
-Give 2-3 questions per category. Questions must refer to specific researched facts or the meeting purpose;
-generic questions such as "What are your goals?" are not acceptable. Mark interpretation and advice as is_inference true."""
+Guidance (do NOT put comments in the JSON):
+- meeting_overview: 2-3 statements on what this meeting is and what success looks like.
+- insights: 3-5 important insights that follow from the evidence.
+- opportunities: 2-4; "why_relevant" must explain why it fits THIS meeting purpose.
+- risks: 2-4 possible challenges. discussion_points: 4-6. strategy: 2-4 statements.
+- questions: 2-3 per category. They must refer to specific researched facts or the meeting purpose;
+  generic questions such as "What are your goals?" are not acceptable.
+- Mark interpretation and advice as is_inference true.
+- Output raw JSON only: no comments, no trailing commas, no markdown."""
 
 
 def _findings_text(company: dict, attendee: dict | None, news_items: list) -> str:

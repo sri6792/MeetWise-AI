@@ -97,6 +97,7 @@ _now = time.monotonic
 TRANSIENT_STATUS = {429, 500, 502, 503, 504}
 RETRY_DELAYS = (2, 6, 15)   # waits before each retry when there is no other model to switch to
 FAILOVER_DELAYS = (2,)      # when a backup model exists, retry once, then switch quickly
+MAX_OUTPUT_TOKENS = 16000   # upper limit we ask for from OpenAI-compatible providers
 BUSY_COOLDOWN = 120.0       # seconds to avoid a model after it proved overloaded
 _BUSY: dict[str, float] = {}  # model -> time (monotonic) until which we skip it
 
@@ -148,8 +149,10 @@ def _chat_once(url: str, headers: dict, system: str, prompt: str, max_tokens: in
 
         if resp.status_code == 200:
             try:
-                return resp.json()["choices"][0]["message"]["content"] or ""
-            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                choice = resp.json()["choices"][0]
+                state["finish_reason"] = choice.get("finish_reason")
+                return choice["message"]["content"] or ""
+            except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
                 raise ClaudeServiceError("The AI provider returned an unexpected response format.") from exc
 
         detail = _error_detail(resp)
@@ -188,14 +191,14 @@ def _generate_openai_compatible(system: str, user: str, max_tokens: int) -> dict
     if settings.llm_fallback_model and settings.llm_fallback_model != settings.llm_model:
         models.append(settings.llm_fallback_model)
 
-    def ask(prompt: str) -> str:
+    def ask(prompt: str, budget: int) -> str:
         busy: ProviderBusyError | None = None
         # skip models that were recently found overloaded (unless nothing else is left)
         candidates = [m for m in models if _BUSY.get(m, 0.0) <= _now()] or models
         for i, model in enumerate(candidates):
             last = i == len(candidates) - 1
             try:
-                return _chat_once(url, headers, system, prompt, max_tokens, state, model,
+                return _chat_once(url, headers, system, prompt, budget, state, model,
                                   RETRY_DELAYS if last else FAILOVER_DELAYS)
             except ProviderBusyError as exc:
                 busy = exc
@@ -204,15 +207,23 @@ def _generate_openai_compatible(system: str, user: str, max_tokens: int) -> dict
         assert busy is not None
         raise busy
 
-    for attempt in (1, 2):
-        text = ask(user + (RETRY_NOTE if attempt == 2 else ""))
+    # "Thinking" models spend part of the token budget before answering, so give them headroom,
+    # and give more room again if a reply was cut off.
+    base = min(max_tokens * 2, MAX_OUTPUT_TOKENS)
+    budgets = [base, min(base * 2, MAX_OUTPUT_TOKENS), MAX_OUTPUT_TOKENS]
+
+    for attempt, budget in enumerate(budgets, start=1):
+        text = ask(user + (RETRY_NOTE if attempt > 1 else ""), budget)
         try:
             data = extract_json(text)
             if isinstance(data, dict):
                 return data
         except ValueError as exc:
-            logger.warning("LLM JSON parse failed (attempt %s): %s", attempt, exc)
-    raise ClaudeServiceError("The AI model returned an unusable response twice. Please retry.")
+            logger.warning(
+                "LLM JSON parse failed (attempt %s, finish_reason=%s, %d chars): %s | starts: %r | ends: %r",
+                attempt, state.get("finish_reason"), len(text), exc, text[:150], text[-150:],
+            )
+    raise ClaudeServiceError("The AI model returned an unusable response 3 times. Please retry.")
 
 
 def format_sources(sources: list, max_chars: int = 900) -> str:
